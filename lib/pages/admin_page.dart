@@ -131,7 +131,6 @@ class _AdminPageState extends State<AdminPage> {
       try {
         final githubService = GitHubService(token: _tokenController.text);
         
-        // Try to extract filename from pdfUrl if possible
         String? pdfFileName;
         if (book.pdfUrl != null) {
           pdfFileName = book.pdfUrl!.split('/').last;
@@ -191,7 +190,8 @@ class _AdminPageState extends State<AdminPage> {
           children: [
             TextFormField(
               controller: _tokenController,
-              decoration: const InputDecoration(labelText: 'GitHub Token', obscureText: true),
+              decoration: const InputDecoration(labelText: 'GitHub Token'),
+              obscureText: true,
               validator: (value) => value!.isEmpty ? 'Enter token' : null,
             ),
             TextFormField(
@@ -238,7 +238,9 @@ class _AdminPageState extends State<AdminPage> {
         itemBuilder: (context, index) {
           final book = _books[index];
           return ListTile(
-            leading: Image.network(book.coverUrl, width: 50, errorBuilder: (_, __, ___) => const Icon(Icons.book)),
+            leading: book.coverUrl.startsWith('http') 
+              ? Image.network(book.coverUrl, width: 50, errorBuilder: (_, __, ___) => const Icon(Icons.book))
+              : const Icon(Icons.book),
             title: Text(book.title),
             subtitle: Text(book.author),
             trailing: IconButton(
