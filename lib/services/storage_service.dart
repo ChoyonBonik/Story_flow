@@ -1,10 +1,12 @@
-﻿import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert'; // For JSON encoding/decoding
+import '../models/book.dart';
 
 class StorageService {
   static const String _recentKey = 'recently_read';
   static const String _favKey = 'favorites';
   static const String _loggedInKey = 'is_logged_in'; // Key for login status
+  static const String _publishedBooksKey = 'published_books';
 
   // --- Authentication Keys ---
   static const String _userCredentialsKey = 'user_credentials'; // Stores a map of phone -> password
@@ -34,6 +36,20 @@ class StorageService {
   static Future<List<String>> getFavorites() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getStringList(_favKey) ?? [];
+  }
+
+  // --- Published Books Methods ---
+  static Future<void> savePublishedBook(Book book) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> books = prefs.getStringList(_publishedBooksKey) ?? [];
+    books.add(json.encode(book.toJson()));
+    await prefs.setStringList(_publishedBooksKey, books);
+  }
+
+  static Future<List<Book>> getPublishedBooks() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> booksJson = prefs.getStringList(_publishedBooksKey) ?? [];
+    return booksJson.map((b) => Book.fromJson(json.decode(b))).toList();
   }
 
   // --- Authentication Methods ---

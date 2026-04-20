@@ -1,13 +1,13 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../models/book.dart';
 import '../services/storage_service.dart';
 import '../widgets/book_card.dart';
 import '../widgets/search_bar_widget.dart';
 import 'chapter_list_page.dart';
-import 'auth/login_page.dart';
+import 'admin_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,34 +26,40 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _fetchLibrary();
+    _loadAllBooks();
     _refreshData();
   }
 
-  Future<void> _fetchLibrary() async {
+  Future<void> _loadAllBooks() async {
+    setState(() => isLoading = true);
+
+    List<Book> remoteBooks = [];
+    List<Book> localBooks = [];
+
+    // Fetch remote books
     const url = 'https://ChoyonBonik.github.io/Story_flow/books.json';
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        setState(() {
-          library = data.map((b) => Book.fromJson(b)).toList();
-          filteredBooks = library;
-          isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to load library');
+        remoteBooks = data.map((b) => Book.fromJson(b)).toList();
       }
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading library: $e')),
-        );
-      }
+      debugPrint('Error loading remote library: $e');
     }
+
+    // Fetch local books
+    try {
+      localBooks = await StorageService.getPublishedBooks();
+    } catch (e) {
+      debugPrint('Error loading local library: $e');
+    }
+
+    setState(() {
+      library = [...remoteBooks, ...localBooks];
+      filteredBooks = library;
+      isLoading = false;
+    });
   }
 
   void _refreshData() async {
@@ -66,14 +72,14 @@ class _HomePageState extends State<HomePage> {
   void _filterBooks(String query) {
     setState(() {
       filteredBooks = library.where((book) {
-        final matchesQuery = book.title.toLowerCase().contains(query.toLowerCase()) || 
+        final matchesQuery = book.title.toLowerCase().contains(query.toLowerCase()) ||
                              book.author.toLowerCase().contains(query.toLowerCase());
         final matchesFav = !showOnlyFavorites || favoriteIds.contains(book.id);
         return matchesQuery && matchesFav;
       }).toList();
     });
   }
-  
+
   void _toggleFavorites() {
     setState(() {
       showOnlyFavorites = !showOnlyFavorites;
@@ -121,13 +127,12 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   const CircleAvatar(
                     radius: 40,
-                    // Ensure this asset exists: assets/images/profile_placeholder.png
-                    // backgroundImage: AssetImage('assets/images/profile_placeholder.png'), 
                     backgroundColor: Colors.white,
+                    child: Icon(Icons.person, size: 50, color: Colors.brown),
                   ),
                   const SizedBox(height: 05),
-                  const Text('User Name', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  const Text('user@example.com', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  const Text('Choyon & Vabon', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('choyonvabon.com', style: TextStyle(color: Colors.white70, fontSize: 14)),
                 ],
               ),
             ),
@@ -135,7 +140,16 @@ class _HomePageState extends State<HomePage> {
               leading: const Icon(Icons.home),
               title: const Text('Library'),
               onTap: () {
-                Navigator.pop(context); // Close the drawer
+                Navigator.pop(context);
+                _loadAllBooks();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.admin_panel_settings),
+              title: const Text('Admin Panel'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminPage())).then((_) => _loadAllBooks());
               },
             ),
             ListTile(
@@ -148,16 +162,6 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
-             ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Settings section coming soon!')),
-                );
-              },
-            ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
@@ -167,7 +171,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      body: isLoading 
+      body: isLoading
         ? const Center(child: CircularProgressIndicator())
         : CustomScrollView(
             slivers: [
@@ -179,22 +183,22 @@ class _HomePageState extends State<HomePage> {
               isFavoriteActive: showOnlyFavorites,
             ),
           ),
-          
+
           SliverToBoxAdapter(child: _buildSectionTitle(showOnlyFavorites ? 'Your Favorites' : 'All Books')),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, 
-                childAspectRatio: 0.6, // Adjusted for better fit
-                crossAxisSpacing: 16, 
+                crossAxisCount: 2,
+                childAspectRatio: 0.6,
+                crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, index) => BookCard(
                   book: filteredBooks[index],
                   onBookOpen: () => _openBook(filteredBooks[index]),
-                  onFavoriteToggle: _refreshData, 
+                  onFavoriteToggle: _refreshData,
                 ),
                 childCount: filteredBooks.length,
               ),
@@ -212,10 +216,41 @@ class _HomePageState extends State<HomePage> {
       child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
     );
   }
-  
+
   void _openBook(Book book) async {
     await StorageService.saveRecent(book.id);
     if (!mounted) return;
-    Navigator.push(context, MaterialPageRoute(builder: (context) => ChapterListPage(book: book))).then((_) => _refreshData());
+
+    if (book.pdfUrl != null && book.pdfUrl!.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => FullBookPDFViewer(book: book)
+        )
+      ).then((_) => _refreshData());
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ChapterListPage(book: book))
+      ).then((_) => _refreshData());
+    }
+  }
+}
+
+class FullBookPDFViewer extends StatelessWidget {
+  final Book book;
+  const FullBookPDFViewer({super.key, required this.book});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(book.title)),
+      body: SfPdfViewer.network(
+        book.pdfUrl!,
+        onDocumentLoadFailed: (details) => ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load: ${details.description}')),
+        ),
+      ),
+    );
   }
 }

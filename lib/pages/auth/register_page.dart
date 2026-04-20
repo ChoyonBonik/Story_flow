@@ -149,7 +149,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   child: _isLoading
                       ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Register', style: TextStyle(fontSize: 16)),
+                      : const Text('Register', style: TextStyle(fontSize: 16, color: Colors.white)),
                 ),
                 const SizedBox(height: 20),
                 TextButton(
