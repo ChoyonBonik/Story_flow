@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../../services/storage_service.dart';
 import 'register_page.dart'; // For navigation to RegisterPage
@@ -33,6 +33,15 @@ class _LoginPageState extends State<LoginPage> {
         }
       } else {
         setState(() { _errorMessage = 'Invalid phone number or password. Please try again or register.'; });
+        // Show Snackbar when error message is set
+        if (mounted) { // Ensure context is available
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_errorMessage),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
       }
       if (mounted) {
         setState(() { _isLoading = false; });
@@ -118,10 +127,7 @@ class _LoginPageState extends State<LoginPage> {
                   onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RegisterPage())),
                   child: const Text('Don\'t have an account? Register'),
                 ),
-                if (_errorMessage.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text(_errorMessage, style: const TextStyle(color: Colors.red, fontSize: 14), textAlign: TextAlign.center),
-                ]
+                // The Text widget for error display is removed as Snackbar is used.
               ],
             ),
           ),

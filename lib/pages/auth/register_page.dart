@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../../services/storage_service.dart';
 import 'login_page.dart';
@@ -23,6 +23,14 @@ class _RegisterPageState extends State<RegisterPage> {
     if (_formKey.currentState!.validate()) {
       if (_passwordController.text != _confirmPasswordController.text) {
         setState(() { _errorMessage = 'Passwords do not match.'; });
+        if (mounted) { // Ensure context is available
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_errorMessage),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
         return;
       }
       setState(() { _isLoading = true; _errorMessage = ''; });
@@ -38,6 +46,14 @@ class _RegisterPageState extends State<RegisterPage> {
         }
       } else {
         setState(() { _errorMessage = 'Phone number already registered. Please login.'; });
+        if (mounted) { // Ensure context is available
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_errorMessage),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
       }
       if (mounted) {
         setState(() { _isLoading = false; });
@@ -140,10 +156,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage())),
                   child: const Text('Already have an account? Login'),
                 ),
-                if (_errorMessage.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text(_errorMessage, style: const TextStyle(color: Colors.red, fontSize: 14), textAlign: TextAlign.center),
-                ]
+                // The Text widget for error display is removed as Snackbar is used.
               ],
             ),
           ),

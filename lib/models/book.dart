@@ -2,7 +2,15 @@
   final String title;
   final String fileName;
   Chapter({required this.title, required this.fileName});
-  String get url => "https://raw.githubusercontent.com/ChoyonBonik/StoryFlow/main/${Uri.encodeComponent(fileName)}";
+
+  String get url => "https://ChoyonBonik.github.io/StoryFlow/books/$fileName";
+
+  factory Chapter.fromJson(Map<String, dynamic> json) {
+    return Chapter(
+      title: json['title'],
+      fileName: json['fileName'],
+    );
+  }
 }
 
 class Book {
@@ -19,4 +27,14 @@ class Book {
     required this.coverUrl, 
     required this.chapters
   });
+
+  factory Book.fromJson(Map<String, dynamic> json) {
+    return Book(
+      id: json['id'],
+      title: json['title'],
+      author: json['author'],
+      coverUrl: json['coverUrl'],
+      chapters: (json['chapters'] as List).map((c) => Chapter.fromJson(c)).toList(),
+    );
+  }
 }

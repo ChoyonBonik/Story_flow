@@ -1,0 +1,26 @@
+[
+  {
+    "id": "alat_chakra",
+    "title": "অলাতচক্র",
+    "author": "আহমদ ছফা",
+    "coverUrl": "https://m.media-amazon.com/images/I/71Yl1GvO9sL._AC_UF1000,1000_QL80_.jpg",
+    "chapters": [
+      { "title": "১-২. হাসপাতাল ভেসে পৌঁছলাম", "fileName": "alat_chakra/1-2.pdf" },
+      { "title": "৩-৪. ঘুম ভাঙল দেরিতে", "fileName": "alat_chakra/3-4.pdf" },
+      { "title": "৫-৬. হাসপাতাল থেকে", "fileName": "alat_chakra/5-6.pdf" },
+      { "title": "৭-৮. তারপরদিন সকালবেলা", "fileName": "alat_chakra/7-8.pdf" },
+      { "title": "৯-১০. আগস্ট মাসের চৌদ্দ তারিখ", "fileName": "alat_chakra/9-10.pdf" },
+      { "title": "১১-১২. অনিমেষবাবুর অনুবাদের কাজ", "fileName": "alat_chakra/11-12.pdf" },
+      { "title": "১৩-১৪. হতবিহ্বল হয়ে পড়েছিলাম", "fileName": "alat_chakra/13-14.pdf" }
+    ]
+  },
+  {
+    "id": "galpaguchcha",
+    "title": "গল্পগুচ্ছ",
+    "author": "রবীন্দ্রনাথ ঠাকুর",
+    "coverUrl": "https://m.media-amazon.com/images/I/51p8I2-9T0L.jpg",
+    "chapters": [
+      { "title": "সম্পূর্ণ বই", "fileName": "galpaguchcha/galpaguchcha_full.pdf" }
+    ]
+  }
+]

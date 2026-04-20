@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../services/storage_service.dart'; // Import StorageService
 import 'home_page.dart'; // To navigate to HomePage
@@ -18,6 +18,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     super.initState();
     _controller = AnimationController(vsync: this);
     // Navigation is handled in onLoaded callback after animation plays.
+    // Removed redundant call to _navigateToNextScreen() from initState.
   }
 
   Future<void> _navigateToNextScreen() async {

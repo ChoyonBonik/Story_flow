@@ -1,11 +1,13 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/book.dart';
 import '../services/storage_service.dart';
 import '../widgets/book_card.dart';
 import '../widgets/search_bar_widget.dart';
 import 'chapter_list_page.dart';
-import 'auth/login_page.dart'; // Import LoginPage for logout navigation
+import 'auth/login_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,44 +16,44 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final List<Book> library = [
-    Book(
-      id: 'alat_chakra',
-      title: 'অলাতচক্র',
-      author: 'আহমদ ছফা',
-      coverUrl: 'https://m.media-amazon.com/images/I/71Yl1GvO9sL._AC_UF1000,1000_QL80_.jpg',
-      chapters: [
-        Chapter(title: '১-২. হাসপাতাল ভেসে পৌঁছলাম', fileName: '১-২_হাসপাতাল_ভেসে_পৌঁছলাম.pdf'),
-        Chapter(title: '৩-৪. ঘুম ভাঙল দেরিতে', fileName: '৩-৪_ঘুম_ভাঙল_দেরিতে.pdf'),
-        Chapter(title: '৫-৬. হাসপাতাল থেকে', fileName: '৫-৬_হাসপাতাল_থেকে.pdf'),
-        Chapter(title: '৭-৮. তারপরদিন সকালবেলা', fileName: '৭-৮_তারপরদিন_সকালবেলা.pdf'),
-        Chapter(title: '৯-১০. আগস্ট মাসের চৌদ্দ তারিখ', fileName: '৯-১০_আগস্ট_মাসের_চৌদ্দ_তারিখ.pdf'),
-        Chapter(title: '১১-১২. অনিমেষবাবুর অনুবাদের কাজ', fileName: '১১-১২_অনিমেষবাবুর_অনুবাদের_কাজ.pdf'),
-        Chapter(title: '১৩-১৪. হতবিহ্বল হয়ে পড়েছিলাম', fileName: '১৩-১৪_হতবিহ্বল_হয়ে_পড়েছিলাম.pdf'),
-      ],
-    ),
-    Book(
-      id: 'galpaguchcha',
-      title: 'গল্পগুচ্ছ',
-      author: 'রবীন্দ্রনাথ ঠাকুর',
-      coverUrl: 'https://m.media-amazon.com/images/I/51p8I2-9T0L.jpg',
-      chapters: [
-        Chapter(title: 'পোস্টমাস্টার', fileName: 'Postmaster.pdf'),
-        Chapter(title: 'কাবুলিওয়ালা', fileName: 'Kabuliwala.pdf'),
-      ],
-    ),
-  ];
-
+  List<Book> library = [];
   List<Book> filteredBooks = [];
   List<String> favoriteIds = [];
   bool showOnlyFavorites = false;
+  bool isLoading = true;
   TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    filteredBooks = library;
+    _fetchLibrary();
     _refreshData();
+  }
+
+  Future<void> _fetchLibrary() async {
+    const url = 'https://ChoyonBonik.github.io/StoryFlow/books.json';
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        setState(() {
+          library = data.map((b) => Book.fromJson(b)).toList();
+          filteredBooks = library;
+          isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load library');
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading library: $e')),
+        );
+      }
+    }
   }
 
   void _refreshData() async {
@@ -120,7 +122,7 @@ class _HomePageState extends State<HomePage> {
                   const CircleAvatar(
                     radius: 40,
                     // Ensure this asset exists: assets/images/profile_placeholder.png
-                    backgroundImage: AssetImage('assets/images/profile_placeholder.png'), 
+                    // backgroundImage: AssetImage('assets/images/profile_placeholder.png'), 
                     backgroundColor: Colors.white,
                   ),
                   const SizedBox(height: 05),
@@ -165,8 +167,10 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      body: CustomScrollView(
-        slivers: [
+      body: isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : CustomScrollView(
+            slivers: [
           SliverToBoxAdapter(
             child: SearchBarWidget(
               controller: searchController,
