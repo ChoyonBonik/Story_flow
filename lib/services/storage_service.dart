@@ -5,13 +5,10 @@ import '../models/book.dart';
 class StorageService {
   static const String _recentKey = 'recently_read';
   static const String _favKey = 'favorites';
-  static const String _loggedInKey = 'is_logged_in'; // Key for login status
+  static const String _loggedInKey = 'is_logged_in'; 
   static const String _publishedBooksKey = 'published_books';
+  static const String _userCredentialsKey = 'user_credentials';
 
-  // --- Authentication Keys ---
-  static const String _userCredentialsKey = 'user_credentials'; // Stores a map of phone -> password
-
-  // --- Recent and Favorites (Keep for now) ---
   static Future<void> saveRecent(String bookId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_recentKey, bookId);
@@ -38,7 +35,6 @@ class StorageService {
     return prefs.getStringList(_favKey) ?? [];
   }
 
-  // --- Published Books Methods ---
   static Future<void> savePublishedBook(Book book) async {
     final prefs = await SharedPreferences.getInstance();
     List<String> books = prefs.getStringList(_publishedBooksKey) ?? [];
@@ -52,7 +48,14 @@ class StorageService {
     return booksJson.map((b) => Book.fromJson(json.decode(b))).toList();
   }
 
-  // --- Authentication Methods ---
+  static Future<void> removePublishedBook(String bookId) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> booksJson = prefs.getStringList(_publishedBooksKey) ?? [];
+    List<Book> books = booksJson.map((b) => Book.fromJson(json.decode(b))).toList();
+    books.removeWhere((b) => b.id == bookId);
+    await prefs.setStringList(_publishedBooksKey, books.map((b) => json.encode(b.toJson())).toList());
+  }
+
   static Future<void> setLoggedIn(bool isLoggedIn) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_loggedInKey, isLoggedIn);
@@ -63,32 +66,21 @@ class StorageService {
     return prefs.getBool(_loggedInKey) ?? false;
   }
 
-  // Store credentials (phone number as key, password as value)
-  // WARNING: Storing passwords in plain text is insecure. Use hashing in production.
   static Future<bool> registerUser(String phone, String password) async {
     final prefs = await SharedPreferences.getInstance();
-    // Retrieve existing credentials map or create a new one
     Map<String, dynamic> credentials = json.decode(prefs.getString(_userCredentialsKey) ?? '{}');
-
-    if (credentials.containsKey(phone)) {
-      return false; // Phone number already registered
-    }
-
-    // In a real app, hash the password here
+    if (credentials.containsKey(phone)) return false;
     credentials[phone] = password;
     await prefs.setString(_userCredentialsKey, json.encode(credentials));
-    return true; // Registration successful
+    return true;
   }
 
-  // Verify login credentials
   static Future<bool> verifyLogin(String phone, String password) async {
     final prefs = await SharedPreferences.getInstance();
     Map<String, dynamic> credentials = json.decode(prefs.getString(_userCredentialsKey) ?? '{}');
-
     if (credentials.containsKey(phone)) {
-      // In a real app, compare a hashed version of the entered password with the stored hash
       return credentials[phone] == password;
     }
-    return false; // Phone number not found
+    return false;
   }
 }
