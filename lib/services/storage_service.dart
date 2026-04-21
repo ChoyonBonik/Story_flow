@@ -75,6 +75,26 @@ class StorageService {
     return true;
   }
 
+  static Future<void> saveHighlight(String bookId, Map<String, dynamic> highlight) async {
+    final prefs = await SharedPreferences.getInstance();
+    String key = 'highlights_$bookId';
+    List<String> highlights = prefs.getStringList(key) ?? [];
+    highlights.add(json.encode(highlight));
+    await prefs.setStringList(key, highlights);
+  }
+
+  static Future<List<Map<String, dynamic>>> getHighlights(String bookId) async {
+    final prefs = await SharedPreferences.getInstance();
+    String key = 'highlights_$bookId';
+    List<String> highlightsJson = prefs.getStringList(key) ?? [];
+    return highlightsJson.map((h) => json.decode(h) as Map<String, dynamic>).toList();
+  }
+
+  static Future<void> clearHighlights(String bookId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('highlights_$bookId');
+  }
+
   static Future<bool> verifyLogin(String phone, String password) async {
     final prefs = await SharedPreferences.getInstance();
     Map<String, dynamic> credentials = json.decode(prefs.getString(_userCredentialsKey) ?? '{}');
