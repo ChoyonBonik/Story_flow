@@ -27,7 +27,7 @@ class _LoginPageState extends State<LoginPage> {
       final bool loginSuccess = await StorageService.verifyLogin(phone, password);
 
       if (loginSuccess) {
-        await StorageService.setLoggedIn(true);
+        await StorageService.setLoggedIn(true, userId: phone);
         if (mounted) {
           Navigator.of(context).pushReplacementNamed('/home');
         }

@@ -3,7 +3,7 @@ class Chapter {
   final String fileName;
   Chapter({required this.title, required this.fileName});
 
-  String get url => "https://ChoyonBonik.github.io/Story_flow/books/";
+  String get url => "https://ChoyonBonik.github.io/Story_flow/books/$fileName";
 
   factory Chapter.fromJson(Map<String, dynamic> json) {
     return Chapter(

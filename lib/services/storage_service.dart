@@ -6,6 +6,7 @@ class StorageService {
   static const String _recentKey = 'recently_read';
   static const String _favKey = 'favorites';
   static const String _loggedInKey = 'is_logged_in'; 
+  static const String _currentUserKey = 'current_user_id';
   static const String _publishedBooksKey = 'published_books';
   static const String _userCredentialsKey = 'user_credentials';
 
@@ -56,14 +57,24 @@ class StorageService {
     await prefs.setStringList(_publishedBooksKey, books.map((b) => json.encode(b.toJson())).toList());
   }
 
-  static Future<void> setLoggedIn(bool isLoggedIn) async {
+  static Future<void> setLoggedIn(bool isLoggedIn, {String? userId}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_loggedInKey, isLoggedIn);
+    if (isLoggedIn && userId != null) {
+      await prefs.setString(_currentUserKey, userId);
+    } else if (!isLoggedIn) {
+      await prefs.remove(_currentUserKey);
+    }
   }
 
   static Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_loggedInKey) ?? false;
+  }
+
+  static Future<String?> getCurrentUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_currentUserKey);
   }
 
   static Future<bool> registerUser(String phone, String password) async {
@@ -77,7 +88,8 @@ class StorageService {
 
   static Future<void> saveHighlight(String bookId, Map<String, dynamic> highlight) async {
     final prefs = await SharedPreferences.getInstance();
-    String key = 'highlights_$bookId';
+    final userId = await getCurrentUserId() ?? 'guest';
+    String key = 'highlights_${userId}_$bookId';
     List<String> highlights = prefs.getStringList(key) ?? [];
     highlights.add(json.encode(highlight));
     await prefs.setStringList(key, highlights);
@@ -85,14 +97,26 @@ class StorageService {
 
   static Future<List<Map<String, dynamic>>> getHighlights(String bookId) async {
     final prefs = await SharedPreferences.getInstance();
-    String key = 'highlights_$bookId';
+    final userId = await getCurrentUserId() ?? 'guest';
+    String key = 'highlights_${userId}_$bookId';
     List<String> highlightsJson = prefs.getStringList(key) ?? [];
     return highlightsJson.map((h) => json.decode(h) as Map<String, dynamic>).toList();
   }
 
   static Future<void> clearHighlights(String bookId) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('highlights_$bookId');
+    final userId = await getCurrentUserId() ?? 'guest';
+    await prefs.remove('highlights_${userId}_$bookId');
+  }
+
+  static Future<void> clearAllHighlights() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = await getCurrentUserId() ?? 'guest';
+    final prefix = 'highlights_${userId}_';
+    final keys = prefs.getKeys().where((k) => k.startsWith(prefix)).toList();
+    for (var key in keys) {
+      await prefs.remove(key);
+    }
   }
 
   static Future<bool> verifyLogin(String phone, String password) async {

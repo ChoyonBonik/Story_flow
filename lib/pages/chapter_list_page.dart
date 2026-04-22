@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/book.dart';
 import '../services/storage_service.dart';
 
@@ -43,32 +46,78 @@ class PDFViewerPage extends StatefulWidget {
 class _PDFViewerPageState extends State<PDFViewerPage> {
   late PdfViewerController _pdfViewerController;
   final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
-  List<Map<String, dynamic>> _highlights = [];
 
   @override
   void initState() {
     super.initState();
     _pdfViewerController = PdfViewerController();
-    _loadHighlights();
   }
 
-  Future<void> _loadHighlights() async {
+  void _onDocumentLoaded(PdfDocumentLoadedDetails details) async {
     final highlights = await StorageService.getHighlights(widget.chapter.title);
-    setState(() {
-      _highlights = highlights;
-    });
+    for (var h in highlights) {
+      if (h.containsKey('lines')) {
+        final List<dynamic> linesData = h['lines'];
+        final List<PdfTextLine> lines = linesData.map((ld) {
+          return PdfTextLine(
+            Rect.fromLTWH(
+              (ld['left'] as num).toDouble(),
+              (ld['top'] as num).toDouble(),
+              (ld['width'] as num).toDouble(),
+              (ld['height'] as num).toDouble(),
+            ),
+            ld['text'] as String? ?? '',
+            ld['pageNumber'] as int? ?? 1,
+          );
+        }).toList();
+
+        _pdfViewerController.addAnnotation(HighlightAnnotation(
+          textBoundsCollection: lines,
+        ));
+      } else {
+        // Fallback for old highlights using search
+        final String textToSearch = h['text'];
+        final PdfTextSearchResult result = await _pdfViewerController.searchText(
+          textToSearch,
+          searchOption: TextSearchOption.caseSensitive,
+        );
+        
+        if (result.hasResult) {
+          while (result.hasResult) {
+            // result.nextInstance();
+          }
+        }
+      }
+    }
   }
 
   void _addHighlight(PdfTextSelectionChangedDetails details, Color color) async {
     if (details.selectedText != null) {
-      final highlight = {
-        'text': details.selectedText,
-        'pageNumber': _pdfViewerController.pageNumber,
-        'color': color.value,
-        'date': DateTime.now().toIso8601String(),
-      };
-      await StorageService.saveHighlight(widget.chapter.title, highlight);
-      _loadHighlights();
+      String cleanedText = details.selectedText!.replaceAll('\r', '').replaceAll('\n', ' ').trim();
+      
+      final List<PdfTextLine>? lines = _pdfViewerKey.currentState?.getSelectedTextLines();
+      if (lines != null && lines.isNotEmpty) {
+        _pdfViewerController.addAnnotation(HighlightAnnotation(
+          textBoundsCollection: lines,
+        ));
+
+        final List<Map<String, dynamic>> serializedLines = lines.map((line) => {
+          'left': line.bounds.left,
+          'top': line.bounds.top,
+          'width': line.bounds.width,
+          'height': line.bounds.height,
+          'text': line.text,
+          'pageNumber': line.pageNumber,
+        }).toList();
+
+        final highlight = {
+          'text': cleanedText,
+          'pageNumber': _pdfViewerController.pageNumber,
+          'lines': serializedLines,
+          'date': DateTime.now().toIso8601String(),
+        };
+        await StorageService.saveHighlight(widget.chapter.title, highlight);
+      }
       _pdfViewerController.clearSelection();
     }
   }
@@ -95,9 +144,14 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _colorOption(Colors.yellow, details, () => overlayEntry.remove()),
-                _colorOption(Colors.greenAccent, details, () => overlayEntry.remove()),
-                _colorOption(Colors.pinkAccent, details, () => overlayEntry.remove()),
+                IconButton(
+                  icon: Icon(Icons.border_color, color: Colors.orangeAccent, size: 22),
+                  onPressed: () {
+                    _addHighlight(details, Colors.yellow.withOpacity(0.5));
+                    overlayEntry.remove();
+                  },
+                ),
+                const VerticalDivider(width: 1, thickness: 1, indent: 5, endIndent: 5),
                 IconButton(
                   icon: const Icon(Icons.copy, size: 20),
                   onPressed: () {
@@ -118,38 +172,17 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
     });
   }
 
-  Widget _colorOption(Color color, PdfTextSelectionChangedDetails details, VoidCallback onSelected) {
-    return GestureDetector(
-      onTap: () {
-        _addHighlight(details, color);
-        onSelected();
-      },
-      child: Padding(
-        padding: const EdgeInsets.all(4.0),
-        child: CircleAvatar(
-          backgroundColor: color,
-          radius: 12,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.chapter.title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.list_alt),
-            onPressed: _showHighlightsSummary,
-          ),
-        ],
       ),
       body: SfPdfViewer.network(
         widget.chapter.url,
         key: _pdfViewerKey,
         controller: _pdfViewerController,
+        onDocumentLoaded: _onDocumentLoaded,
         onTextSelectionChanged: (PdfTextSelectionChangedDetails details) {
           if (details.selectedText != null) {
             _showHighlightOptions(details);
@@ -159,45 +192,6 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
           SnackBar(content: Text('Failed to load: ${details.description}')),
         ),
       ),
-    );
-  }
-
-  void _showHighlightsSummary() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          height: MediaQuery.of(context).size.height * 0.7,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Highlights', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              Expanded(
-                child: _highlights.isEmpty
-                    ? const Center(child: Text('No highlights yet'))
-                    : ListView.builder(
-                        itemCount: _highlights.length,
-                        itemBuilder: (context, index) {
-                          final h = _highlights[index];
-                          return ListTile(
-                            leading: CircleAvatar(backgroundColor: Color(h['color']), radius: 10),
-                            title: Text(h['text'], maxLines: 2, overflow: TextOverflow.ellipsis),
-                            subtitle: Text('Page ${h['pageNumber']}'),
-                            onTap: () {
-                              _pdfViewerController.jumpToPage(h['pageNumber']);
-                              Navigator.pop(context);
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
